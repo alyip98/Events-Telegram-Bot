@@ -20,27 +20,22 @@ module.exports = {
   HOUSE_OPTIONS: {
     reply_markup: {
       one_time_keyboard: true,
-      inline_keyboard: [
+      keyboard: [
         [
           {
             text: "Rusa",
-            callback_data: "Rusa"
           },
           {
             text: "Panthera",
-            callback_data: "Panthera"
           },
           {
             text: "Aonyx",
-            callback_data: "Aonyx"
           },
           {
             text: "Chelonia",
-            callback_data: "Chelonia"
           },
           {
             text: "Strix",
-            callback_data: "Strix"
           }
         ]
       ]
@@ -99,7 +94,7 @@ module.exports = {
   SEARCH_NAME_SYNTAX: "Please add a keyword behind: /searchname keyword",
   SEARCH_TAG_SYNTAX: "Please add a keyword behind: /searchtag keyword",
   END_OF_QUERY: "🌅<i>~No Events Found!~</i>🌄",
-  TAG_KEYWORD:
+  TAG_KEYWORD: // TODO: Rephrase this
     "Please enter keywords of events that you are interested in (separated by a comma)",
   TAG_EVENT_KEYWORD: "Please enter keywords associated with this event",
   NOTIFICATIONS_KEYWORD: "Do you want to mute notifications?"
