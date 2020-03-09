@@ -89,17 +89,37 @@ class FirebaseWrapper {
       });
   }
 
-  getUserByChatID(chatID) {
+  getUserKeyByChatID(chatID) {
     return this._ref
       .orderByChild("telegramID")
       .equalTo(chatID)
       .once("value")
       .then(snapshot => {
-        let key = "NO KEY";
+        let key;
         snapshot.forEach(eventObj => {
           key = eventObj.key;
         });
         return key;
+      })
+      .catch(e => {
+        console.log(e);
+      });
+  }
+
+  deleteUserByChatID(chatID) {
+    this._ref
+      .orderByChild("telegramID")
+      .equalTo(chatID)
+      .once("value")
+      .then(snapshot => {
+        let key;
+        snapshot.forEach(eventObj => {
+          key = eventObj.key;
+        });
+        return key;
+      })
+      .then(key => {
+
       })
       .catch(e => {
         console.log(e);
@@ -116,7 +136,7 @@ class FirebaseWrapper {
   putNewUser(user) {
     const newUserRef = this._ref.push();
     const userData = user.toJSON();
-    return this.getUserByChatID(user.telegramID).then(existingKey => {
+    return this.getUserKeyByChatID(user.telegramID).then(existingKey => {
       if (existingKey) {
         return this._ref.child(`${existingKey}`).update(userData);
       } else return newUserRef.set(userData);
@@ -124,7 +144,7 @@ class FirebaseWrapper {
   }
 
   setUserIsMutedAttribute(chatID, mute) {
-    return this.getUserByChatID(chatID).then(existingKey => {
+    return this.getUserKeyByChatID(chatID).then(existingKey => {
       if (existingKey !== "NO KEY") {
         this._ref
           .child(`${existingKey}`)
@@ -140,20 +160,22 @@ class FirebaseWrapper {
     });
   }
 
-  getAllUsers(tagsToCheck) {
+  getUsersWithTags(tags) {
     return this._ref
       .once("value")
       .then(snapshot => {
-        let matchingUsersTelegramID = [];
+        let matchedUsers = [];
         snapshot.forEach(userObj => {
           let user = User.fromJSON(userObj.val());
-          const userTagsHouse = user.tags.concat(user.house);
+          const userTagsHouse = user.tags.concat(user.house.toLowerCase());
+
           // True if current user contains common tags, house with tagsToCheck
-          const found = userTagsHouse.some(r => tagsToCheck.indexOf(r) >= 0);
-          if (found && user.isMuted == "No")
-            matchingUsersTelegramID.push(user.telegramID);
+          if (!tags || tags === ""
+            || user.isMuted === "No" && userTagsHouse.some(tag => tags.indexOf(tag) >= 0)) {
+            matchedUsers.push(user);
+          }
         });
-        return matchingUsersTelegramID;
+        return matchedUsers;
       })
       .catch(console.error);
   }

@@ -8,6 +8,7 @@ const bot = new TelegramBot(token, { polling: true });
 const moment = require("moment");
 const { MODE, EventBuilder } = require("./event-builder");
 const { TRAITS, UserBuilder } = require("./user-builder");
+const Permissions = require("./permissions");
 const sessions = {};
 
 const {
@@ -32,12 +33,12 @@ const fbUsers = require("./connect-firebase").ref("Users");
 function sendNotificationsToUsers(event) {
   // Get all the users with IsMuted=No and with relevant tags and house.
   return fbUsers
-    .getAllUsers(event.tags)
-    .then(usersTelegramIDs => {
-      if (usersTelegramIDs.length) {
+    .getUsersWithTags(event.tags)
+    .then(users => {
+      if (users.length) {
         Promise.all(
-          usersTelegramIDs.map(chatID => replyWithEvents(chatID, [event]))
-        );
+          users.map(user => replyWithEvents(user.telegramID, [event]))
+        ).then(() => console.log(`Sent notifications to ${users.length} users`));
       }
     })
     .catch(e => console.log(e));
@@ -73,7 +74,7 @@ function registerUser(text, chatID, session) {
       console.error(e);
     }
     if (rg.traits === TRAITS.Final) {
-      rg.setTelegramIDAndPermissions(chatID, "Normal User");
+      rg.setTelegramIDAndPermissions(chatID, Permissions.NORMAL);
       session.isRegistering = false;
       fbUsers.putNewUser(rg.finalize()).then(test => {
         bot.sendMessage(chatID, "Successfully registered!");
@@ -190,7 +191,7 @@ bot.onText(/\/start/, msg => {
 
 bot.onText(/\/subscribe/, msg => {
   console.log("subscribed");
-  fbUsers.setUserIsMutedAttribute(msg.chat.id, "No").then(() =>
+  fbUsers.setUserIsMutedAttribute(msg.chat.id, false).then(() =>
     bot.sendMessage(msg.chat.id, "Successfully Subscribed!", {
       parse_mode: "HTML"
     })
@@ -199,7 +200,7 @@ bot.onText(/\/subscribe/, msg => {
 
 bot.onText(/\/unsubscribe/, msg => {
   console.log("unsubscribed");
-  fbUsers.setUserIsMutedAttribute(msg.chat.id, "Yes").then(() =>
+  fbUsers.setUserIsMutedAttribute(msg.chat.id, true).then(() =>
     bot.sendMessage(msg.chat.id, "Successfully Unsubscribed!", {
       parse_mode: "HTML"
     })
@@ -270,11 +271,15 @@ bot.on("callback_query", response => {
 });
 
 registerCallback("command-view-all", response => {
-  fb.getAllEvents().then(events =>
-    replyWithEvents(response.message.chat.id, events)
-  );
+  // Shows all upcoming events ordered by start date
+  fb.getAllEvents().then(events => {
+    events = events.filter(event => moment(event.start) - moment() > 0)
+      .sort((a, b) => moment(a.start) - moment(b.start));
+    replyWithEvents(response.message.chat.id, events);
+  });
 });
 
+// TODO browse command
 registerCallback("command-browse", response => {});
 
 function getSession(id) {
@@ -302,9 +307,9 @@ function getBuilderMessage(mode) {
   for (let i in MODE) {
     if (MODE.hasOwnProperty(i) && MODE[i] === mode) {
       if (i == "Start") {
-        key = "Please enter start date time"; // TO EDIT -> Let user know format?
+        key = "Please enter start date time (DDMMYYYY HHmm) e.g. 06031998 1325 for 6 March 1998 1:25 pm"; // TO EDIT -> Let user know format?
       } else if (i == "End") {
-        key = "Please enter end date time";
+        key = "Please enter end date time (DDMMYYYY HHmm) e.g. 06031998 1325 for 6 March 1998 1:25 pm";
       } else if (i == "Tags") {
         key = TAG_EVENT_KEYWORD;
       } else if (i == "Type") {

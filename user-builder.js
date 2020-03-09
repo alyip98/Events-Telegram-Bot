@@ -14,6 +14,8 @@ TRAITS = {
   Final: i++
 };
 
+const houses = ["Chelonia", "Rusa", "Panthera", "Strix", "Aeonix"];
+
 class UserBuilder {
   constructor(traits = TRAITS.Idle) {
     this.traits = traits;
@@ -41,13 +43,7 @@ class UserBuilder {
         this.traits = TRAITS.House;
         break;
       case TRAITS.House:
-        if (
-          value != "Chelonia" &&
-          value != "Rusa" &&
-          value != "Panthera" &&
-          value != "Strix" &&
-          value != "Aeonix"
-        ) {
+        if (!houses.includes(value)) {
           throw new Error("Input not accepted");
         }
         this.house = value;
@@ -55,9 +51,11 @@ class UserBuilder {
         break;
       case TRAITS.Tags:
         this.tags = value.split(", ");
-        this.traits = TRAITS.IsMuted;
+        this.traits = TRAITS.Final;
+        this.isMuted = false;
         break;
       case TRAITS.IsMuted:
+        // default to unmuted
         if (value != "Yes" && value != "No") {
           throw new Error("Input not accepted");
         }
@@ -69,11 +67,11 @@ class UserBuilder {
     }
   }
 
-  gettraits() {
+  getTraits() {
     return this.traits;
   }
 
-  settraits(traits) {
+  setTraits(traits) {
     if (traits in TRAITS) {
       this.traits = TRAITS[traits];
     } else {

@@ -77,55 +77,6 @@ module.exports = {
       ]
     }
   },
-  DAILY_OPTIONS: {
-    reply_markup: {
-      one_time_keyboard: true,
-      inline_keyboard: [
-        [
-          {
-            text: "Monday",
-            callback_data: "Monday"
-          }
-        ],
-        [
-          {
-            text: "Tuesday",
-            callback_data: "Tuesday"
-          }
-        ],
-        [
-          {
-            text: "Wednesday",
-            callback_data: "Wednesday"
-          }
-        ],
-        [
-          {
-            text: "Thursday",
-            callback_data: "Thursday"
-          }
-        ],
-        [
-          {
-            text: "Friday",
-            callback_data: "Friday"
-          }
-        ],
-        [
-          {
-            text: "Saturday",
-            callback_data: "Saturday"
-          }
-        ],
-        [
-          {
-            text: "Sunday",
-            callback_data: "Sunday"
-          }
-        ]
-      ]
-    }
-  },
   YES_NO_OPTIONS: {
     reply_markup: {
       one_time_keyboard: true,
