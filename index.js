@@ -175,6 +175,10 @@ bot.onText(/\/searchtag/, (msg, match) => {
   );
 });
 
+bot.onText(/\/start/, msg => {
+  bot.sendMessage(msg.chat.id, WELCOME, {parse_mode: 'text'});
+})
+
 bot.onText(/\/create/, msg => {
   const session = getSession(msg.chat.id);
   session.isBuilding = true;
@@ -182,7 +186,6 @@ bot.onText(/\/create/, msg => {
   bot.sendMessage(msg.chat.id, getBuilderMessage(session.builder.mode));
 });
 
-bot.onText(/\/start/, msg => {
 bot.onText(/\/register/, msg => {
   const session = getSession(msg.chat.id);
   session.isRegistering = true;
