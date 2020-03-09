@@ -1,5 +1,5 @@
 module.exports = {
-  WELCOME: "Hi, Welcome to RVRC events bot. Try out our commands.",
+  WELCOME: "Welcome to RVRC's very own event bot. You can /register to get notified when new events are created and to create your own events, or simply browse upcoming events right away!",
   WELCOME_COMMANDS: {
     reply_markup: {
       one_time_keyboard: true,
