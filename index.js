@@ -183,6 +183,7 @@ bot.onText(/\/create/, msg => {
 });
 
 bot.onText(/\/start/, msg => {
+bot.onText(/\/register/, msg => {
   const session = getSession(msg.chat.id);
   session.isRegistering = true;
   session.register = new UserBuilder(TRAITS.Name);
