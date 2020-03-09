@@ -1,7 +1,7 @@
 const moment = require("moment");
 
 class Event {
-  constructor(name, tags, start, end, venue, description, type) {
+  constructor(name, tags, start, end, venue, description, type, creator, dateCreated) {
     this.name = name;
     this.tags = tags;
     this.start = start;
@@ -9,8 +9,8 @@ class Event {
     this.venue = venue;
     this.description = description;
     this.type = type || "once";
-    // this.creator;
-    // this.createdDate;
+    this.creator = creator;
+    this.dateCreated = dateCreated || moment(Date.now()).toISOString();
   }
 
   static fromJSON(jsonObject) {
@@ -21,7 +21,9 @@ class Event {
       jsonObject.end,
       jsonObject.venue,
       jsonObject.description,
-      jsonObject.type
+      jsonObject.type,
+      jsonObject.creator,
+      jsonObject.dateCreated
     );
   }
 
@@ -48,13 +50,16 @@ class Event {
       end: this.end,
       venue: this.venue,
       description: this.description,
-      type: this.type
+      type: this.type,
+      creator: this.creator,
+      dateCreated: this.dateCreated
     };
   }
 
   setKey(key) {
     this.key = key;
   }
+
   format() {
     // TODO
     const title = `<b><u>${this.name}</u></b>\n`;

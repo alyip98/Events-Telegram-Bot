@@ -4,29 +4,35 @@
     "-LzvJ48_6qPRvhLwcB-L" : {
       "name" : "Picnic",
       "description" : "Eat till you drop",
-      "start" : "2020-02-02T13:24:29.244Z",
-      "end" : "2020-02-02T17:24:29.244Z",
+      "start" : "2020-04-02T13:24:29.244Z",
+      "end" : "2020-04-02T17:24:29.244Z",
       "tags" : ["Fun", "Food"],
       "venue" : "RVRC Dining Hall",
-      "type": "once"
+      "type": "once",
+      "creator": 371790126,
+      "dateCreated" : "2020-03-10T13:24:29.244Z"
     },
     "-LzvJUHMQ3ymtAaGWm0S" : {
       "name" : "Chinese Calligraphy",
       "description" : "Be cultured",
-      "start" : "2020-01-02T13:24:29.244Z",
-      "end" : "2020-01-02T17:24:29.244Z",
+      "start" : "2020-05-02T13:24:29.244Z",
+      "end" : "2020-05-02T17:24:29.244Z",
       "tags" : ["Art", "Workshop"],
       "venue" : "RVRC Dining Hall",
-      "type": "once"
+      "type": "once",
+      "creator": 371790126,
+      "dateCreated" : "2020-03-10T13:24:29.244Z"
     },
     "-LzvJl1txS4Vs6wZOxGE" : {
       "name" : "Inter-House Games ",
       "description" : "A day of fun and friendly competition",
-      "start" : "2020-02-02T13:24:29.244Z",
-      "end" : "2020-02-02T17:24:29.244Z",
+      "start" : "2020-06-02T13:24:29.244Z",
+      "end" : "2020-06-02T17:24:29.244Z",
       "tags" : ["Fun", "Sports"],
       "venue" : "MPSH1",
-      "type": "once"
+      "type": "once",
+      "creator": 371790127,
+      "dateCreated" : "2020-03-10T13:24:29.244Z"
     }
   }
 }

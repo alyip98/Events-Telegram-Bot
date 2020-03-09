@@ -17,7 +17,9 @@ MODE = {
 };
 
 class EventBuilder {
-  constructor(mode = MODE.Idle) {
+  constructor(creator, mode = MODE.Idle) {
+    this.creator = creator;
+    this.dateCreated = moment(Date.now()).toISOString();
     this.mode = mode;
   }
 
@@ -28,6 +30,8 @@ class EventBuilder {
   }
 
   fromObject(event) {
+    this.creator = event.creator;
+    this.dateCreated = event.dateCreated;
     this.name = event.name;
     this.tags = event.tags;
     this.start = event.start;
@@ -92,7 +96,9 @@ class EventBuilder {
       this.end,
       this.venue,
       this.description,
-      this.type
+      this.type,
+      this.creator,
+      this.dateCreated
     );
   }
 }
