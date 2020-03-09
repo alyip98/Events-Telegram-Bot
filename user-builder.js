@@ -14,7 +14,7 @@ TRAITS = {
   Final: i++
 };
 
-const houses = ["Chelonia", "Rusa", "Panthera", "Strix", "Aeonix"];
+const houses = ["Chelonia", "Rusa", "Panthera", "Strix", "Aeonyx"];
 
 class UserBuilder {
   constructor(traits = TRAITS.Idle) {
@@ -50,7 +50,8 @@ class UserBuilder {
         this.traits = TRAITS.Tags;
         break;
       case TRAITS.Tags:
-        this.tags = value.split(", ");
+        // TODO: Should we just use default tags and let users modify
+        this.tags = value.split(",").map(tag => tag.trim());
         this.traits = TRAITS.Final;
         this.isMuted = false;
         break;
