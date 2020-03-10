@@ -1,15 +1,15 @@
 require("dotenv").config({ path: __dirname + "/.env" });
-
-// Telegram token you receive from @BotFather
-const token = process.env.TELEGRAM_BOT_TOKEN;
 const TelegramBot = require("node-telegram-bot-api");
-// Create a bot that uses 'polling' to fetch new updates
-const bot = new TelegramBot(token, { polling: true });
 const moment = require("moment");
+const token = process.env.TELEGRAM_BOT_TOKEN;
+const bot = new TelegramBot(token, { polling: true });
+
 const { MODE, EventBuilder } = require("./event-builder");
 const { TRAITS, UserBuilder } = require("./user-builder");
 const Permissions = require("./permissions");
-const sessions = {};
+
+const fbEvents = require("./connect-firebase").ref("Events");
+const fbUsers = require("./connect-firebase").ref("Users");
 
 const {
   BROWSE_EVENTS_OPTIONS,
@@ -26,8 +26,20 @@ const {
   NOTIFICATIONS_KEYWORD
 } = require("./displayMessagesConstants");
 
-const fb = require("./connect-firebase").ref("Events");
-const fbUsers = require("./connect-firebase").ref("Users");
+const sessions = {};
+const registeredCallbacks = {};
+const cachedTags = new Set();
+
+function buildCachedTags() {
+  fbEvents.getAllEvents()
+    .then(events => {
+      events.forEach(event => {
+        event.tags.forEach(tag => {
+          cachedTags.add(tag);
+        })
+      })
+    })
+}
 
 // Pass in a single event
 function sendNotificationsToUsers(event) {
@@ -60,7 +72,6 @@ function replyWithEvents(chatId, events) {
   }
 }
 
-const registeredCallbacks = {};
 function registerCallback(data, callback) {
   registeredCallbacks[data] = callback;
 }
@@ -91,6 +102,65 @@ function registerUser(text, chatID, session) {
   }
 }
 
+function getSession(id) {
+  if (id in sessions) {
+    return sessions[id];
+  } else {
+    return newSession(id);
+  }
+}
+
+function newSession(id) {
+  sessions[id] = {
+    id,
+    isBuilding: false,
+    builder: null,
+    isRegistering: false,
+    register: null
+  };
+
+  return sessions[id];
+}
+
+function getBuilderMessage(mode) {
+  let key = "";
+  for (let i in MODE) {
+    if (MODE.hasOwnProperty(i) && MODE[i] === mode) {
+      if (i == "Start") {
+        key = "Please enter start date time (DDMMYYYY HHmm) e.g. 06031998 1325 for 6 March 1998 1:25 pm";
+      } else if (i == "End") {
+        key = "Please enter end date time (DDMMYYYY HHmm) e.g. 06031998 1325 for 6 March 1998 1:25 pm";
+      } else if (i == "Tags") {
+        key = TAG_EVENT_KEYWORD;
+      } else if (i == "Type") {
+        key =
+          "Enter 'once' if it is a one time event. Otherwise, enter 'weekly'. (Without apostrophe)";
+      } else {
+        key = `Please enter event ${i.toLowerCase()}`;
+      }
+      break;
+    }
+  }
+  return key;
+}
+
+function getRegisterMessage(traits) {
+  let key = "";
+  for (let i in TRAITS) {
+    if (TRAITS.hasOwnProperty(i) && TRAITS[i] === traits) {
+      if (i == "IsMuted") {
+        key = NOTIFICATIONS_KEYWORD;
+      } else if (i == "Tags") {
+        key = TAG_KEYWORD;
+      } else {
+        key = `Please enter your ${i.toLowerCase()}`;
+      }
+      break;
+    }
+  }
+  return key;
+}
+
 // Listen for any kind of message.
 bot.on("message", msg => {
   const chatId = msg.chat.id;
@@ -114,7 +184,8 @@ bot.on("message", msg => {
       }
       if (eb.mode === MODE.Final) {
         session.isBuilding = false;
-        fb.putNewEvent(eb.finalize())
+        eb.tags.forEach(tag => cachedTags.add(tag));
+        fbEvents.putNewEvent(eb.finalize())
           .then(() => {
             bot.sendMessage(msg.chat.id, "Event added!");
           })
@@ -145,7 +216,7 @@ bot.onText(/\/weekly/, msg => {
 });
 
 bot.onText(/\/allevents/, msg => {
-  fb.getAllEvents().then(events => replyWithEvents(msg.chat.id, events));
+  fbEvents.getAllEvents().then(events => replyWithEvents(msg.chat.id, events));
 });
 
 bot.onText(/\/searchname/, (msg, match) => {
@@ -157,7 +228,7 @@ bot.onText(/\/searchname/, (msg, match) => {
     });
     return;
   }
-  fb.getEventsByKeyword(keyword).then(events =>
+  fbEvents.getEventsByKeyword(keyword).then(events =>
     replyWithEvents(msg.chat.id, events)
   );
 });
@@ -170,19 +241,19 @@ bot.onText(/\/searchtag/, (msg, match) => {
     });
     return;
   }
-  fb.getEventsByTag(keyword).then(events =>
+  fbEvents.getEventsByTag(keyword).then(events =>
     replyWithEvents(msg.chat.id, events)
   );
 });
 
 bot.onText(/\/start/, msg => {
-  bot.sendMessage(msg.chat.id, WELCOME, {parse_mode: 'text'});
-})
+  bot.sendMessage(msg.chat.id, WELCOME);
+});
 
 bot.onText(/\/create/, msg => {
   const session = getSession(msg.chat.id);
   session.isBuilding = true;
-  session.builder = new EventBuilder(MODE.Name);
+  session.builder = new EventBuilder(msg.chat.id, MODE.Name);
   bot.sendMessage(msg.chat.id, getBuilderMessage(session.builder.mode));
 });
 
@@ -209,6 +280,11 @@ bot.onText(/\/unsubscribe/, msg => {
       parse_mode: "HTML"
     })
   );
+});
+
+bot.onText(/\/debug/, msg => {
+  console.log(cachedTags);
+  bot.sendMessage(msg.chat.id, `tags: ${Array.from(cachedTags).join(", ")}`);
 });
 
 bot.on("callback_query", response => {
@@ -264,11 +340,11 @@ bot.on("callback_query", response => {
 
   // Start searching Firebase
   if (isWeekly === false) {
-    fb.getEventsByDates(startingStart, endingStart).then(events =>
+    fbEvents.getEventsByDates(startingStart, endingStart).then(events =>
       replyWithEvents(response.message.chat.id, events)
     );
   } else if (isWeekly === true) {
-    fb.getEventsByDay(data).then(events =>
+    fbEvents.getEventsByDay(data).then(events =>
       replyWithEvents(response.message.chat.id, events)
     );
   }
@@ -276,71 +352,23 @@ bot.on("callback_query", response => {
 
 registerCallback("command-view-all", response => {
   // Shows all upcoming events ordered by start date
-  fb.getAllEvents().then(events => {
+  fbEvents.getAllEvents().then(events => {
     events = events.filter(event => moment(event.start) - moment() > 0)
       .sort((a, b) => moment(a.start) - moment(b.start));
     replyWithEvents(response.message.chat.id, events);
   });
 });
 
-// TODO browse command
-registerCallback("command-browse", response => {});
+registerCallback("command-browse", response => {
+  // TODO browse command
+  fbEvents.getAllEvents().then(events => {
+    events.sort((a, b) => moment(a.start) - moment(b.start));
+    bot.sendMessage(response.message.chat.id, "browse");
 
-function getSession(id) {
-  if (id in sessions) {
-    return sessions[id];
-  } else {
-    return newSession(id);
-  }
-}
+    // replyWithEvents(response.message.chat.id, events);
+  });
+});
 
-function newSession(id) {
-  sessions[id] = {
-    id,
-    isBuilding: false,
-    builder: null,
-    isRegistering: false,
-    register: null
-  };
+buildCachedTags();
 
-  return sessions[id];
-}
-
-function getBuilderMessage(mode) {
-  let key = "";
-  for (let i in MODE) {
-    if (MODE.hasOwnProperty(i) && MODE[i] === mode) {
-      if (i == "Start") {
-        key = "Please enter start date time (DDMMYYYY HHmm) e.g. 06031998 1325 for 6 March 1998 1:25 pm"; // TO EDIT -> Let user know format?
-      } else if (i == "End") {
-        key = "Please enter end date time (DDMMYYYY HHmm) e.g. 06031998 1325 for 6 March 1998 1:25 pm";
-      } else if (i == "Tags") {
-        key = TAG_EVENT_KEYWORD;
-      } else if (i == "Type") {
-        key =
-          "Enter 'once' if it is a one time event. Otherwise, enter 'weekly'. (Without apostrophe)";
-      } else {
-        key = `Please enter event ${i.toLowerCase()}`;
-      }
-      break;
-    }
-  }
-  return key;
-}
-
-function getRegisterMessage(traits) {
-  let key = "";
-  for (let i in TRAITS) {
-    if (TRAITS.hasOwnProperty(i) && TRAITS[i] === traits) {
-      if (i == "IsMuted") {
-        key = NOTIFICATIONS_KEYWORD;
-      } else if (i == "Tags") {
-        key = TAG_KEYWORD;
-      } else {
-        key = `Please enter your ${i.toLowerCase()}`;
-      }
-      break;
-    }
-  }
-  return key;
-}
+console.log("Bot running");
