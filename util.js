@@ -55,4 +55,15 @@ function replyWithEvents(bot, chatId, events) {
   }
 }
 
-module.exports = { getBuilderMessage, getRegisterMessage, replyWithEvents };
+function buildKeyboard(tags) {
+  return {
+    reply_markup: {
+      one_time_keyboard: true,
+      inline_keyboard: [
+        tags.map(i => { return {'text': i, 'callback_data': `browse-tags ${i}`}; })
+      ]
+    }
+  }
+}
+
+module.exports = { getBuilderMessage, getRegisterMessage, replyWithEvents, buildKeyboard };

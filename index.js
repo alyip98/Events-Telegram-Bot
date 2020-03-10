@@ -6,7 +6,7 @@ const bot = new TelegramBot(token, { polling: true });
 
 const { MODE, EventBuilder } = require("./event-builder");
 const { TRAITS, UserBuilder } = require("./user-builder");
-const { getRegisterMessage, getBuilderMessage, replyWithEvents } = require("./util");
+const { getRegisterMessage, getBuilderMessage, replyWithEvents, buildKeyboard } = require("./util");
 const Permissions = require("./permissions");
 
 const fbEvents = require("./connect-firebase").ref("Events");
@@ -230,8 +230,14 @@ bot.onText(/\/debug/, msg => {
 bot.on("callback_query", response => {
   const data = response.data;
 
-  if (data in registeredCallbacks) {
-    return registeredCallbacks[data](response);
+  if (!data) {
+    console.warn("Empty callback encountered");
+    return;
+  }
+  const command = data.split(" ")[0];
+
+  if (command in registeredCallbacks) {
+    return registeredCallbacks[command](response, data);
   }
 
   bot.sendMessage(response.message.chat.id, "You selected " + data);
@@ -301,12 +307,16 @@ registerCallback("command-view-all", response => {
 
 registerCallback("command-browse", response => {
   // TODO browse command
-  fbEvents.getAllEvents().then(events => {
-    events.sort((a, b) => moment(a.start) - moment(b.start));
-    bot.sendMessage(response.message.chat.id, "browse");
+  const tagKeyboard = buildKeyboard(Array.from(cachedTags));
+  bot.sendMessage(response.message.chat.id, "Tags", tagKeyboard);
+});
 
-    // replyWithEvents(response.message.chat.id, events);
-  });
+registerCallback("browse-tags", (response, data) => {
+  const splitData = data.split(" ");
+  const tag = splitData.length > 1 ? splitData[1] : "";
+  fbEvents.getEventsByTag(tag)
+    .then(events => replyWithEvents(bot, response.message.chat.id, events))
+    .then(() => console.log(data));
 });
 
 buildCachedTags();
