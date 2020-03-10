@@ -306,7 +306,7 @@ registerCallback("command-view-all", response => {
 });
 
 registerCallback("command-browse", response => {
-  // TODO browse command
+  // TODO order tags by number of events
   const tagKeyboard = buildKeyboard(Array.from(cachedTags));
   bot.sendMessage(response.message.chat.id, "Tags", tagKeyboard);
 });
@@ -315,7 +315,7 @@ registerCallback("browse-tags", (response, data) => {
   const splitData = data.split(" ");
   const tag = splitData.length > 1 ? splitData[1] : "";
   fbEvents.getEventsByTag(tag)
-    .then(events => replyWithEvents(bot, response.message.chat.id, events))
+    .then(events => replyWithEvents(bot, response.message.chat.id, events, `<i>Tag: <b>${tag}</b></i>\n\n`))
     .then(() => console.log(data));
 });
 

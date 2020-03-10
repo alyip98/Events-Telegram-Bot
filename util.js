@@ -39,9 +39,9 @@ function getRegisterMessage(traits) {
   return key;
 }
 
-function replyWithEvents(bot, chatId, events) {
+function replyWithEvents(bot, chatId, events, header="") {
   if (events.length) {
-    let combinedMessage = events.reduce(
+    let combinedMessage = header + events.reduce(
       (acc, event) => acc + event.format() + "\n\n",
       ""
     );
@@ -49,7 +49,7 @@ function replyWithEvents(bot, chatId, events) {
       parse_mode: "HTML"
     });
   } else {
-    bot.sendMessage(chatId, END_OF_QUERY, {
+    bot.sendMessage(chatId, header + END_OF_QUERY, {
       parse_mode: "HTML"
     });
   }
