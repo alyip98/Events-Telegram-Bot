@@ -52,6 +52,7 @@ class EventBuilder {
         this.mode = MODE.Start;
         break;
       case MODE.Start:
+        // TODO: Add error handling and re-prompting here and at Mode.End
         this.start = moment(value, "DDMMYYYY HHmm", true).toISOString();
         this.mode = MODE.End;
         break;

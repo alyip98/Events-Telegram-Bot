@@ -6,6 +6,7 @@ const bot = new TelegramBot(token, { polling: true });
 
 const { MODE, EventBuilder } = require("./event-builder");
 const { TRAITS, UserBuilder } = require("./user-builder");
+const { getRegisterMessage, getBuilderMessage, replyWithEvents } = require("./util");
 const Permissions = require("./permissions");
 
 const fbEvents = require("./connect-firebase").ref("Events");
@@ -42,34 +43,14 @@ function buildCachedTags() {
 }
 
 // Pass in a single event
-function sendNotificationsToUsers(event) {
+function sendNotificationsToUsers(users, event) {
   // Get all the users with IsMuted=No and with relevant tags and house.
-  return fbUsers
-    .getUsersWithTags(event.tags)
-    .then(users => {
-      if (users.length) {
-        Promise.all(
-          users.map(user => replyWithEvents(user.telegramID, [event]))
-        ).then(() => console.log(`Sent notifications to ${users.length} users`));
-      }
-    })
-    .catch(e => console.log(e));
-}
-
-function replyWithEvents(chatId, events) {
-  if (events.length) {
-    let combinedMessage = events.reduce(
-      (acc, event) => acc + event.format() + "\n\n",
-      ""
-    );
-    bot.sendMessage(chatId, combinedMessage, {
-      parse_mode: "HTML"
-    });
-  } else {
-    bot.sendMessage(chatId, END_OF_QUERY, {
-      parse_mode: "HTML"
-    });
+  if (users.length) {
+    return Promise.all(
+      users.map(user => replyWithEvents(bot, user.telegramID, [event]))
+    ).then(() => console.log(`Sent notifications to ${users.length} users`));
   }
+  return Promise.resolve();
 }
 
 function registerCallback(data, callback) {
@@ -122,44 +103,6 @@ function newSession(id) {
   return sessions[id];
 }
 
-function getBuilderMessage(mode) {
-  let key = "";
-  for (let i in MODE) {
-    if (MODE.hasOwnProperty(i) && MODE[i] === mode) {
-      if (i == "Start") {
-        key = "Please enter start date time (DDMMYYYY HHmm) e.g. 06031998 1325 for 6 March 1998 1:25 pm";
-      } else if (i == "End") {
-        key = "Please enter end date time (DDMMYYYY HHmm) e.g. 06031998 1325 for 6 March 1998 1:25 pm";
-      } else if (i == "Tags") {
-        key = TAG_EVENT_KEYWORD;
-      } else if (i == "Type") {
-        key =
-          "Enter 'once' if it is a one time event. Otherwise, enter 'weekly'. (Without apostrophe)";
-      } else {
-        key = `Please enter event ${i.toLowerCase()}`;
-      }
-      break;
-    }
-  }
-  return key;
-}
-
-function getRegisterMessage(traits) {
-  let key = "";
-  for (let i in TRAITS) {
-    if (TRAITS.hasOwnProperty(i) && TRAITS[i] === traits) {
-      if (i == "IsMuted") {
-        key = NOTIFICATIONS_KEYWORD;
-      } else if (i == "Tags") {
-        key = TAG_KEYWORD;
-      } else {
-        key = `Please enter your ${i.toLowerCase()}`;
-      }
-      break;
-    }
-  }
-  return key;
-}
 
 // Listen for any kind of message.
 bot.on("message", msg => {
@@ -185,14 +128,11 @@ bot.on("message", msg => {
       if (eb.mode === MODE.Final) {
         session.isBuilding = false;
         eb.tags.forEach(tag => cachedTags.add(tag));
-        fbEvents.putNewEvent(eb.finalize())
-          .then(() => {
-            bot.sendMessage(msg.chat.id, "Event added!");
-          })
-          .then(() => {
-            // Send notifications to users
-            sendNotificationsToUsers(eb.finalize());
-          });
+        const event = eb.finalize();
+        fbEvents.putNewEvent(event)
+          .then(() => bot.sendMessage(msg.chat.id, "Event added!"))
+          .then(fbUsers.getUsersWithTags)
+          .then(users => sendNotificationsToUsers(users, event));
       } else
         bot
           .sendMessage(msg.chat.id, getBuilderMessage(eb.mode))
@@ -216,7 +156,7 @@ bot.onText(/\/weekly/, msg => {
 });
 
 bot.onText(/\/allevents/, msg => {
-  fbEvents.getAllEvents().then(events => replyWithEvents(msg.chat.id, events));
+  fbEvents.getAllEvents().then(events => replyWithEvents(bot, msg.chat.id, events));
 });
 
 bot.onText(/\/searchname/, (msg, match) => {
@@ -229,7 +169,7 @@ bot.onText(/\/searchname/, (msg, match) => {
     return;
   }
   fbEvents.getEventsByKeyword(keyword).then(events =>
-    replyWithEvents(msg.chat.id, events)
+    replyWithEvents(bot, msg.chat.id, events)
   );
 });
 
@@ -242,7 +182,7 @@ bot.onText(/\/searchtag/, (msg, match) => {
     return;
   }
   fbEvents.getEventsByTag(keyword).then(events =>
-    replyWithEvents(msg.chat.id, events)
+    replyWithEvents(bot, msg.chat.id, events)
   );
 });
 
@@ -341,11 +281,11 @@ bot.on("callback_query", response => {
   // Start searching Firebase
   if (isWeekly === false) {
     fbEvents.getEventsByDates(startingStart, endingStart).then(events =>
-      replyWithEvents(response.message.chat.id, events)
+      replyWithEvents(bot, response.message.chat.id, events)
     );
   } else if (isWeekly === true) {
     fbEvents.getEventsByDay(data).then(events =>
-      replyWithEvents(response.message.chat.id, events)
+      replyWithEvents(bot, response.message.chat.id, events)
     );
   }
 });
@@ -355,7 +295,7 @@ registerCallback("command-view-all", response => {
   fbEvents.getAllEvents().then(events => {
     events = events.filter(event => moment(event.start) - moment() > 0)
       .sort((a, b) => moment(a.start) - moment(b.start));
-    replyWithEvents(response.message.chat.id, events);
+    replyWithEvents(bot, response.message.chat.id, events);
   });
 });
 
